@@ -1,8 +1,8 @@
-from synth_data import *
-from synth_data.utils import *
+from simulated_data import *
+from simulated_data.utils import *
 
 
-class AdversGraphSynth():
+class AdversGraphSimulator():
 
     def __init__(self, N=1000, n_nodes=96, T=10, lambda_const=5):
         self.N = N
@@ -28,12 +28,12 @@ class AdversGraphSynth():
     def create_interval_matrix(self, rate_mat):
         return np.random.exponential(1, size=(self.n_nodes, self.n_nodes, self.N)) / rate_mat
 
-    def get_homo_interval_model(self, lambda_const=None):
+    def get_homog_interval_model(self, lambda_const=None):
         """
         intervals are of a homogeneous poisson process with constant rate lambda
         :return:
         """
-        rate_mat = lambda_const if lambda_const is not None else synth.lambda_const  # lambda_const * np.ones((n_nodes, n_nodes, N))
+        rate_mat = lambda_const if lambda_const is not None else sim.lambda_const  # lambda_const * np.ones((n_nodes, n_nodes, N))
         return self.create_interval_matrix(rate_mat)
 
     def get_cox_process_interval_model(self):
@@ -45,15 +45,16 @@ class AdversGraphSynth():
         bool_act_mat = act_mat
         setattr(bool_act_mat, 'dtype', bool)
         # vectorized tau calculation
-        tau = np.diff(np.tile(synth.t, (96, 96, 1))[act_tens])
+        tau = np.diff(np.tile(sim.t, (96, 96, 1))[act_tens])
         tau = tau[tau > 0]
         assert np.isclose(coefficient_of_variation(tau), 1, rtol=1e-1)
 
 
-synth_param = dict(N=1000, n_nodes=96, T=10,
-                   lambda_const=5)
-synth = AdversGraphSynth(**synth_param)
-rate_mat = synth.lambda_const  # lambda_const * np.ones((n_nodes, n_nodes, N))
-tau_mat = np.random.exponential(1, size=(synth.n_nodes, synth.n_nodes, synth.N)) / rate_mat
-act_tens = synth.build_activity_tensor(tau_mat)
-synth.validate_homog_poisson(act_tens)
+if __name__ == "__main__":
+    sim_param = dict(N=1000, n_nodes=96, T=10,
+                       lambda_const=5)
+    sim = AdversGraphSimulator(**sim_param)
+    rate_mat = sim.lambda_const  # lambda_const * np.ones((n_nodes, n_nodes, N))
+    tau_mat = np.random.exponential(1, size=(sim.n_nodes, sim.n_nodes, sim.N)) / rate_mat
+    act_tens = sim.build_activity_tensor(tau_mat)
+    sim.validate_homog_poisson(act_tens)

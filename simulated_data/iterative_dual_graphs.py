@@ -134,5 +134,5 @@ def get_dual_graphs():
         B_nxs = B_nxs[1:] + [B_nx]
 
 
-if if __name__ == '__main__':
+if __name__ == '__main__':
     get_dual_graphs()
