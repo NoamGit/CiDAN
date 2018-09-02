@@ -1,3 +1,4 @@
+import pickle
 from simulated_data import *
 from simulated_data.utils import *
 
@@ -40,21 +41,61 @@ class AdversGraphSimulator():
         pass
 
     @staticmethod
-    def validate_homog_poisson(act_mat):
+    def validate_homog_poisson(act_mat, time_axis):
         """check if the intervals from the matrix have cv = 1"""
         bool_act_mat = act_mat
         setattr(bool_act_mat, 'dtype', bool)
         # vectorized tau calculation
-        tau = np.diff(np.tile(sim.t, (96, 96, 1))[act_tens])
+        tau = np.diff(np.tile(time_axis, (96, 96, 1))[act_mat])
         tau = tau[tau > 0]
         assert np.isclose(coefficient_of_variation(tau), 1, rtol=1e-1)
 
 
 if __name__ == "__main__":
-    sim_param = dict(N=1000, n_nodes=96, T=10,
-                       lambda_const=5)
-    sim = AdversGraphSimulator(**sim_param)
-    rate_mat = sim.lambda_const  # lambda_const * np.ones((n_nodes, n_nodes, N))
-    tau_mat = np.random.exponential(1, size=(sim.n_nodes, sim.n_nodes, sim.N)) / rate_mat
-    act_tens = sim.build_activity_tensor(tau_mat)
-    sim.validate_homog_poisson(act_tens)
+    # sim_param = dict(N=1000, n_nodes=96, T=10,
+    #                    lambda_const=5)
+    # sim = AdversGraphSimulator(**sim_param)
+    # rate_mat = sim.lambda_const  # lambda_const * np.ones((n_nodes, n_nodes, N))
+    # tau_mat = np.random.exponential(1, size=(sim.n_nodes, sim.n_nodes, sim.N)) / rate_mat
+    # act_tens = sim.build_activity_tensor(tau_mat)
+    # sim.validate_homog_poisson(act_tens, sim.t)
+
+    import tensorflow as tf
+
+    tf.enable_eager_execution()
+
+    # activity matrix creation
+    with open(r"data/Reality_Mining_MIT.adjs", "rb") as f:
+        source_tens = pickle.load(f)
+    source_tens = source_tens[20:]
+    source_shape = source_tens[0].shape
+
+    source_nonzeros = []
+    for k in range(len(source_tens)):
+        x, y = source_tens[k].nonzero()
+        source_nonzeros += [[x, y, k] for x, y in zip(x, y)]
+    sp_source_tensor = tf.SparseTensor(indices=source_nonzeros, values=np.ones(len(source_nonzeros), dtype=np.int8),
+                                       dense_shape=list(source_shape + (len(source_tens),)))
+
+    # kernel creation
+    kernel_param = dict(num_people=8, time_span=4)
+    time_kernel = 1/np.exp(np.arange(0,4,4/kernel_param["time_span"]))
+    sampled_interactions = np.random.randint(0,source_shape[0],kernel_param['num_people'])
+    kernel_nonzeros ,kernel_values = [], []
+    X, Y = np.meshgrid(sampled_interactions, np.arange(source_shape[0]))
+    sp_kernel = list()
+    for n in range(kernel_param["time_span"]):
+        sp_kernel_itr = dok_matrix(source_shape)
+        sp_kernel_itr[X,Y] = time_kernel[n]
+        sp_kernel_itr[Y,X] = time_kernel[n]
+        sp_kernel += [sp_kernel_itr]
+        # for k, l in zip(X.flatten(), Y.flatten()):
+        #     sp_kernel_itr[k,l] = time_kernel[n]
+        #     sp_kernel_itr[l, k] = time_kernel[n]
+        #     kernel_nonzeros += [[k, l, n],[l, k, n]]
+        #     kernel_values += list(time_kernel[n].repeat(2))
+    # sp_kernel_tensor = tf.SparseTensor(indices=kernel_nonzeros, values=kernel_values,
+    #                                    dense_shape=list(source_shape + (kernel_param["time_span"],)))
+
+    # intensity function creation
+    tf.nn.conv3d
