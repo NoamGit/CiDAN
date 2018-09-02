@@ -3,7 +3,7 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 import torch
 
-
+#bla
 class CiDAN(nn.Module):
     def __init__(self, nodes_num_A, nodes_num_B, hidden_size, ZDIMS, batch_size):
         super(CiDAN, self).__init__()
